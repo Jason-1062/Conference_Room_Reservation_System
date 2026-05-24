@@ -60,11 +60,6 @@ export default function Login() {
         <div className="auth-footer">
           还没有账号？<Link to="/register">立即注册</Link>
         </div>
-        <div className="auth-demo">
-          <p>演示账号</p>
-          <span>管理员: admin / admin123</span>
-          <span>普通用户: zhangsan / 123456</span>
-        </div>
       </div>
     </div>
   );

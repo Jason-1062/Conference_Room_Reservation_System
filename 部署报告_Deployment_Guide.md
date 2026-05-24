@@ -1,6 +1,6 @@
 # 🚀 会议室预约系统 - 生产环境部署指南 (Deployment Guide)
 
-这份指南将引导您在一台典型的 Linux 服务器 (如 Ubuntu 22.04) 上，使用 Nginx 作为反向代理并结合 PM2/Daemon 或 Docker，将您的 **.NET 10 后端** 和 **React 前端** 部署上线。
+这份指南将引导您在一台典型的 Linux 服务器 (如 Ubuntu 22.04) 上，使用 Nginx + systemd 将您的 **.NET 10 后端** 和 **React 前端** 部署上线。
 
 ## 📍 环境准备
 
@@ -12,7 +12,8 @@
    ```
 2. **.NET 10 运行时**：用于运行后端的 ASP.NET Core 应用。
    请参考微软官方文档安装对应版本的 ASP.NET Core Runtime (如 `aspnetcore-runtime-10.0`)。
-3. **数据库**：如 PostgreSQL / MySQL / SQL Server 等，按您的 `appsettings.Production.json` 需求部署并配置。
+3. **Node.js + npm**：用于构建 React 前端静态资源。
+4. **数据库**：当前项目后端使用 **MySQL**，请按生产环境准备好对应实例，并用自己的生产配置覆盖连接字符串与 JWT 密钥。
 
 ---
 
@@ -21,8 +22,7 @@
 1. **本地发布项目**：
    在开发机上执行打包命令，将程序编译为发布格式。
    ```bash
-   cd Conference_Room_Reservation_System.Server
-   dotnet publish -c Release -o ./publish
+   dotnet publish Conference_Room_Reservation_System.Server/Conference_Room_Reservation_System.Server.csproj -c Release -o ./publish
    ```
 2. **上传至服务器**：
    将生成的 `publish` 文件夹上传到服务器的 `/var/www/conference-api` 路径下。
@@ -43,11 +43,11 @@
    WorkingDirectory=/var/www/conference-api
    ExecStart=/usr/bin/dotnet /var/www/conference-api/Conference_Room_Reservation_System.Server.dll
    Restart=always
-   # 如果服务崩溃，10秒后重启
    RestartSec=10
    KillSignal=SIGINT
    SyslogIdentifier=conference-api
    Environment=ASPNETCORE_ENVIRONMENT=Production
+   Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
    Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
 
    [Install]
@@ -59,7 +59,7 @@
    sudo systemctl start conference-api.service
    sudo systemctl status conference-api.service
    ```
-   *此时，后端应默认运行在 `http://localhost:5000` (取决于您的 appsettings 配置).*
+   *生产环境建议显式绑定到 `http://127.0.0.1:5000`，这样只允许 Nginx 通过反向代理访问后端。开发态看到的 `5574` 端口只用于 `dotnet run`。*
 
 ---
 
@@ -68,13 +68,14 @@
 1. **本地构建前端项目**：
    ```bash
    cd frontend
+   npm install
    npm run build
    ```
    *构建完成后会生成一个 `dist` 目录。*
 2. **上传至服务器**：
    将 `dist` 文件夹内容上传至服务器的静态目录，比如 `/var/www/conference-frontend`。
    ```bash
-   scp -r ./dist user@your_server_ip:/var/www/conference-frontend
+   rsync -a ./dist/ user@your_server_ip:/var/www/conference-frontend/
    ```
 
 ---
@@ -121,10 +122,26 @@
    sudo systemctl restart nginx
    ```
 
+## ⚙️ 生产配置建议
+
+- 在服务器上放置 `appsettings.Production.json` 或通过环境变量覆盖数据库连接字符串、JWT 密钥和其他敏感信息。
+- 后端发布后如果数据库为空，启动时会自动执行 `EnsureCreated()`；如果你已经有现成数据库结构，也可以改成迁移方案再上线。
+- 如果站点首次访问报 502，优先检查 `conference-api.service` 是否启动成功，以及后端是否正在监听 `127.0.0.1:5000`。
+
 ## 🎉 第四步：运维与更新
 
-- **更新后端**：重新 `dotnet publish` -> 覆盖服务器文件 -> 执行 `sudo systemctl restart conference-api.service`。
-- **更新前端**：重新 `npm run build` -> 覆盖 `/var/www/conference-frontend` 内容。
+- **更新后端**：
+   1. 在项目根目录重新发布：`cd /root/Conference_Room_Reservation_System && dotnet publish Conference_Room_Reservation_System.Server/Conference_Room_Reservation_System.Server.csproj -c Release -o /var/www/conference-api`
+   2. 重启服务：`sudo systemctl restart conference-api.service`
+
+- **更新前端**：
+   1. 在前端目录重新构建：`cd /root/Conference_Room_Reservation_System/frontend && npm run build`
+   2. 覆盖静态目录：`sudo rm -rf /var/www/conference-frontend/* && sudo cp -r /root/Conference_Room_Reservation_System/frontend/dist/* /var/www/conference-frontend/`
+   3. 如果只改了前端页面内容，通常不需要重启 Nginx；如果改了 Nginx 配置，再执行 `sudo systemctl restart nginx`。
+
+- **快速检查**：
+   - 前端是否可访问：`curl -I http://127.0.0.1/`
+   - 后端是否可访问：`curl -I http://127.0.0.1/api/auth/login`
 - **查看后端日志**：`sudo journalctl -fu conference-api.service`
 
 **恭喜！您的会议室预约系统已成功部署到生产环境。**
