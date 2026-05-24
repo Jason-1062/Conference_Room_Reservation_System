@@ -1,0 +1,19 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.3.5">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>dbb9a35c-df1d-4102-8b84-8b8eae6e1a56</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Conference_Room_Reservation_System.Server\Conference_Room_Reservation_System.Server.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.3.5" />
+    <PackageReference Include="Aspire.Hosting.JavaScript" Version="13.3.5" />
+  </ItemGroup>
+</Project>

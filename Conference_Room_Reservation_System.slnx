@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="Conference_Room_Reservation_System.AppHost/Conference_Room_Reservation_System.AppHost.csproj" />
+  <Project Path="Conference_Room_Reservation_System.Server/Conference_Room_Reservation_System.Server.csproj" />
+  <Project Path="frontend/frontend.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+</Solution>
